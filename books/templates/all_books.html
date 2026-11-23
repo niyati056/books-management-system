@@ -1,0 +1,167 @@
+{% extends 'admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Complete Book Inventory — BÓokly Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div>
+        <h2 class="font-serif fw-bold mb-1">Book Inventory & Catalogue</h2>
+        <p class="text-muted small mb-0">Manage all registered volumes, digital manuscripts, and publication details.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'add_book' %}" class="btn btn-editorial-primary btn-sm px-3">
+            ➕ Add New Volume
+        </a>
+    </div>
+</div>
+
+<!-- ================= SEARCH & FILTER CONTROLS ================= -->
+<div class="admin-table-container p-3 mb-4 bg-white">
+    <form method="GET" action="{% url 'all_books' %}" id="adminFilterForm">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-6">
+                <div class="position-relative">
+                    <span class="position-absolute" style="left: 14px; top: 50%; transform: translateY(-50%); color: #8A8077;">🔍</span>
+                    <input type="text"
+                           name="search"
+                           value="{{ search }}"
+                           class="form-control ps-5"
+                           style="border-radius: 8px; font-size: 14px;"
+                           placeholder="Search inventory by title, author, or genre...">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select name="category" class="form-select" style="border-radius: 8px; font-size: 14px;" onchange="document.getElementById('adminFilterForm').submit()">
+                    <option value="">All Genres</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-editorial-primary btn-sm w-100 justify-content-center">
+                    Filter
+                </button>
+                {% if search or selected_category %}
+                <a href="{% url 'all_books' %}" class="btn btn-editorial-subtle btn-sm" title="Clear filter">
+                    ↺
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- ================= INVENTORY TABLE ================= -->
+<div class="admin-table-container">
+    <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white">
+        <span class="small text-muted">
+            Displaying <strong>{{ filtered_count }}</strong> of <strong>{{ total_books }}</strong> library records
+        </span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 70px;">Cover</th>
+                    <th>Book Details</th>
+                    <th>Category</th>
+                    <th>Attributes</th>
+                    <th>Digital PDF</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for book in books %}
+                <tr>
+                    <td>
+                        {% if book.image %}
+                        <img src="{{ book.image.url }}" alt="{{ book.book_name }}" style="width: 48px; height: 68px; object-fit: cover; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.12);">
+                        {% else %}
+                        <div style="width: 48px; height: 68px; background: #eee; border-radius: 4px; display:flex; align-items:center; justify-content:center; font-size:11px;">No cover</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong class="d-block text-dark font-serif" style="font-size: 16px;">
+                            <a href="{% url 'book_detail' book.id %}" target="_blank" class="text-dark">{{ book.book_name }}</a>
+                        </strong>
+                        <span class="small text-muted">by {{ book.author_name }}</span>
+                    </td>
+                    <td>
+                        <span class="badge-pill badge-category">{{ book.category }}</span>
+                    </td>
+                    <td>
+                        <span class="small d-block text-muted">★ {{ book.rating|default:"4.8" }}</span>
+                        <span class="small d-block text-muted">{{ book.pages|default:"280" }} pages</span>
+                    </td>
+                    <td>
+                        {% if book.pdf %}
+                        <a href="{{ book.pdf.url }}" target="_blank" class="badge-pill badge-pdf-available text-decoration-none">
+                            ✓ Read File ↗
+                        </a>
+                        {% else %}
+                        <span class="badge-pill bg-light text-muted">None uploaded</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <a href="{% url 'book_detail' book.id %}" target="_blank" class="btn btn-sm btn-editorial-subtle py-1 px-2" title="Preview public page">
+                                👁
+                            </a>
+                            <a href="{% url 'update_book' book.id %}" class="btn btn-sm btn-editorial-subtle py-1 px-2" title="Edit book details">
+                                ✏️ Edit
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="confirmDeleteBook({{ book.id }}, '{{ book.book_name|escapejs }}')" title="Delete book">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5">
+                        <div class="mb-2" style="font-size: 2rem;">📚</div>
+                        <h5 class="font-serif fw-bold">No books found</h5>
+                        <p class="text-muted small">No books match your current search or category filter.</p>
+                        <a href="{% url 'all_books' %}" class="btn btn-editorial-subtle btn-sm">Clear Filter</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ================= DELETE CONFIRMATION MODAL ================= -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title font-serif fw-bold text-danger">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3">
+                <p>Are you sure you want to permanently remove <strong id="deleteBookTitle"></strong> from the library catalogue?</p>
+                <p class="small text-muted mb-0">This operation cannot be reversed.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-editorial-subtle btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <a id="deleteConfirmBtn" href="#" class="btn btn-danger btn-sm px-3">Permanently Delete</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block admin_scripts %}
+<script>
+    function confirmDeleteBook(id, title) {
+        document.getElementById('deleteBookTitle').textContent = `"${title}"`;
+        document.getElementById('deleteConfirmBtn').setAttribute('href', `/delete-book/${id}/`);
+        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}

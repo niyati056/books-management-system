@@ -1,0 +1,190 @@
+{% extends 'admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Update {{ book.book_name }} — BÓokly Admin{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{% url 'all_books' %}" class="btn btn-editorial-subtle btn-sm mb-2">← Back to All Books</a>
+    <h2 class="font-serif fw-bold mb-1">Edit Book: {{ book.book_name }}</h2>
+    <p class="text-muted small mb-0">Modify volume details, update cover artwork, or replace digital manuscript PDF.</p>
+</div>
+
+<div class="row g-4 justify-content-center">
+    <div class="col-lg-9">
+        <div class="admin-table-container p-4 p-md-5 bg-white">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- Basic Information Section -->
+                <h5 class="font-serif fw-bold pb-2 border-bottom mb-4">Bibliographic Information</h5>
+
+                <div class="row g-3 mb-4">
+                    <!-- Book Name -->
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold small text-muted">Book Title *</label>
+                        <input type="text"
+                               name="book_name"
+                               class="form-control"
+                               value="{{ book.book_name }}"
+                               required>
+                    </div>
+
+                    <!-- Category / Genre -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Genre / Category *</label>
+                        <input type="text"
+                               name="category"
+                               list="categoryList"
+                               class="form-control"
+                               value="{{ book.category }}"
+                               required>
+                        <datalist id="categoryList">
+                            {% for cat in existing_categories %}
+                            <option value="{{ cat }}">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+
+                    <!-- Author Name -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Author Name *</label>
+                        <input type="text"
+                               name="author_name"
+                               class="form-control"
+                               value="{{ book.author_name }}"
+                               required>
+                    </div>
+
+                    <!-- Language -->
+                    <div class="col-md-3 col-6">
+                        <label class="form-label fw-bold small text-muted">Language</label>
+                        <input type="text"
+                               name="language"
+                               class="form-control"
+                               value="{{ book.language|default:'English' }}">
+                    </div>
+
+                    <!-- Page Count -->
+                    <div class="col-md-3 col-6">
+                        <label class="form-label fw-bold small text-muted">Pages</label>
+                        <input type="number"
+                               name="pages"
+                               class="form-control"
+                               value="{{ book.pages|default:280 }}">
+                    </div>
+
+                    <!-- Rating -->
+                    <div class="col-md-4 col-6">
+                        <label class="form-label fw-bold small text-muted">Rating (1.0 - 5.0)</label>
+                        <input type="number"
+                               step="0.1"
+                               min="1.0"
+                               max="5.0"
+                               name="rating"
+                               class="form-control"
+                               value="{{ book.rating|default:4.8 }}">
+                    </div>
+
+                    <!-- Featured Checkbox -->
+                    <div class="col-md-8 col-6 d-flex align-items-center pt-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_featured" id="featuredSwitch" {% if book.is_featured %}checked{% endif %}>
+                            <label class="form-check-label small fw-semibold" for="featuredSwitch">
+                                Spotlight as Editor's Choice on Homepage
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">Synopsis & Description *</label>
+                        <textarea name="description"
+                                  class="form-control"
+                                  rows="5"
+                                  required>{{ book.description }}</textarea>
+                    </div>
+                </div>
+
+                <!-- Media Uploads Section -->
+                <h5 class="font-serif fw-bold pb-2 border-bottom mb-4">Cover Artwork & Digital Manuscript</h5>
+
+                <div class="row g-4 mb-4">
+                    <!-- Book Cover Image -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Cover Artwork</label>
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            {% if book.image %}
+                            <div class="book-cover-container" style="width: 70px; height: 95px; margin-bottom: 0;">
+                                <div class="book-spine-effect"></div>
+                                <img src="{{ book.image.url }}" alt="{{ book.book_name }}">
+                            </div>
+                            <span class="small text-muted">Current cover active</span>
+                            {% else %}
+                            <span class="small text-muted">No cover currently uploaded</span>
+                            {% endif %}
+                        </div>
+
+                        <label class="form-label small text-muted mt-2">Replace Cover (Optional)</label>
+                        <input type="file"
+                               name="image"
+                               id="bookImageInput"
+                               class="form-control"
+                               accept="image/*">
+
+                        <!-- Live preview if new file selected -->
+                        <div id="imagePreviewContainer" class="mt-2 text-center" style="display:none;">
+                            <div class="book-cover-container mx-auto" style="width: 100px; height: 140px;">
+                                <div class="book-spine-effect"></div>
+                                <img id="imageLivePreview" src="" alt="New Cover Preview">
+                            </div>
+                            <span class="small text-muted">New selection preview</span>
+                        </div>
+                    </div>
+
+                    <!-- Book PDF -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Digital Manuscript (PDF)</label>
+                        <div class="p-3 rounded mb-3" style="background: var(--bg-muted); border: 1px solid var(--border-color);">
+                            {% if book.pdf %}
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <span class="small fw-bold text-success d-block">✓ PDF Manuscript Attached</span>
+                                    <a href="{{ book.pdf.url }}" target="_blank" class="small text-decoration-none">Open file in new tab ↗</a>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="remove_pdf" value="1" id="removePdfCheck">
+                                    <label class="form-check-label small text-danger" for="removePdfCheck">
+                                        Delete PDF
+                                    </label>
+                                </div>
+                            </div>
+                            {% else %}
+                            <span class="small text-muted">No PDF attached to this volume.</span>
+                            {% endif %}
+                        </div>
+
+                        <label class="form-label small text-muted">Upload New PDF File</label>
+                        <input type="file"
+                               name="pdf"
+                               class="form-control"
+                               accept=".pdf">
+                        <div class="form-text small">Uploading a new PDF replaces any existing file.</div>
+                    </div>
+                </div>
+
+                <!-- Submit & Cancel Buttons -->
+                <div class="d-flex gap-3 pt-3 border-top">
+                    <button type="submit" class="btn btn-editorial-primary px-4 py-2">
+                        Save Changes
+                    </button>
+                    <a href="{% url 'all_books' %}" class="btn btn-editorial-subtle px-4 py-2">
+                        Cancel
+                    </a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

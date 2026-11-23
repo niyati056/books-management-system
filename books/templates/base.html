@@ -1,0 +1,241 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BÓokly — Curated Literary Archive & Digital Library{% endblock %}</title>
+
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Custom Editorial Design System -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <!-- Django Message Toasts -->
+    {% if messages %}
+    <div class="toast-container-custom">
+        {% for message in messages %}
+        <div class="editorial-toast {% if message.tags %}{{ message.tags }}{% endif %} django-message-toast">
+            <div style="font-size: 16px;">
+                {% if message.tags == 'success' %}✓{% elif message.tags == 'error' or message.tags == 'danger' %}✕{% else %}ℹ{% endif %}
+            </div>
+            <div class="flex-grow-1 small fw-semibold">{{ message }}</div>
+            <button type="button" class="btn-close btn-close-sm" style="font-size: 10px;" onclick="this.parentElement.remove()"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ================= NAVBAR ================= -->
+    <nav class="navbar navbar-expand-lg editorial-navbar">
+        <div class="container d-flex align-items-center justify-content-between">
+            <!-- Brand -->
+            <a class="brand-logo text-nowrap" href="{% url 'home' %}">
+                <span class="brand-logo-icon">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                    </svg>
+                </span>
+                <span class="brand-logo-text">BÓokly</span>
+            </a>
+
+            <!-- Mobile Action Controls (visible only on mobile) -->
+            <div class="d-flex align-items-center gap-2 d-lg-none">
+                <button class="btn btn-editorial-subtle btn-sm px-2 py-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#bookshelfOffcanvas" title="Saved reading list">
+                    <span>🔖</span>
+                    <span class="badge bg-danger rounded-pill bookshelf-count-badge" style="display:none; font-size: 10px;">0</span>
+                </button>
+                <button class="navbar-toggler border-0 p-1" type="button" data-bs-toggle="collapse" data-bs-target="#editorialNavContent" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+
+            <!-- Menu Content -->
+            <div class="collapse navbar-collapse" id="editorialNavContent">
+                <ul class="navbar-nav mx-auto editorial-nav my-2 my-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'user_all' %}active{% endif %}" href="{% url 'user_all' %}">Discover Library</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'user_all' %}?sort=rating">Top Rated</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'user_all' %}?sort=pdf">Digital Reads</a>
+                    </li>
+                </ul>
+
+                <!-- Desktop & Mobile Right Tools (Strictly ONE single line on desktop) -->
+                <div class="nav-right-tools d-flex align-items-center gap-2 flex-nowrap pt-2 pt-lg-0">
+                    <!-- Search input -->
+                    <form method="GET" action="{% url 'user_all' %}" class="nav-search-form flex-grow-1 flex-lg-grow-0">
+                        <span class="nav-search-icon">🔍</span>
+                        <input type="text" name="search" class="nav-search-input" placeholder="Search..." value="{{ search|default:'' }}">
+                    </form>
+
+                    <!-- Bookshelf Button (Desktop) -->
+                    <button class="btn btn-editorial-subtle text-nowrap d-none d-lg-inline-flex" type="button" data-bs-toggle="offcanvas" data-bs-target="#bookshelfOffcanvas" title="Saved reading list">
+                        <span>🔖</span>
+                        <span>Bookshelf</span>
+                        <span class="badge bg-danger rounded-pill bookshelf-count-badge" style="display:none; font-size: 11px;">0</span>
+                    </button>
+
+                    <!-- User / Admin Actions (Always in the same line) -->
+                    {% if user.is_authenticated and user.is_staff %}
+                    <div class="dropdown text-nowrap">
+                        <button class="btn btn-editorial-primary text-nowrap dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <span>Admin: {{ user.username }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                            <li><a class="dropdown-item py-2" href="{% url 'admin_dashboard' %}">📊 Dashboard</a></li>
+                            <li><a class="dropdown-item py-2" href="{% url 'all_books' %}">📚 All Books</a></li>
+                            <li><a class="dropdown-item py-2" href="{% url 'add_book' %}">➕ Add New Book</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger py-2" href="{% url 'admin_logout' %}">🚪 Sign Out</a></li>
+                        </ul>
+                    </div>
+                    {% else %}
+                    <a href="{% url 'admin_login' %}" class="btn btn-editorial-primary text-nowrap">
+                        <span>Staff Login</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="mt-5 pt-5 pb-4" style="background-color: #191614; color: #E5DFD7;">
+        <div class="container">
+            <div class="row g-4 pb-4 border-bottom" style="border-color: rgba(255,255,255,0.08) !important;">
+                <div class="col-lg-4 col-md-6">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span style="font-size: 24px; color: #C45536;">📖</span>
+                        <h4 class="font-serif mb-0 text-white">BÓokly</h4>
+                    </div>
+                    <p style="color: #9E968D; font-size: 14.5px; line-height: 1.7; max-width: 320px;">
+                        A bespoke digital sanctuary for bibliophiles. Exploring the world’s literary treasures, contemporary gems, and rare digital editions with intentional typography.
+                    </p>
+                </div>
+                <div class="col-lg-2 col-md-3 col-6">
+                    <h6 class="text-uppercase fw-bold text-white small mb-3" style="letter-spacing: 0.1em;">Archive</h6>
+                    <ul class="list-unstyled small" style="line-height: 2.2;">
+                        <li><a href="{% url 'user_all' %}" style="color: #9E968D;">All Collections</a></li>
+                        <li><a href="{% url 'user_all' %}?sort=rating" style="color: #9E968D;">Top Rated</a></li>
+                        <li><a href="{% url 'user_all' %}?sort=pdf" style="color: #9E968D;">Digital PDFs</a></li>
+                        <li><a href="{% url 'user_all' %}?sort=newest" style="color: #9E968D;">New Arrivals</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-3 col-6">
+                    <h6 class="text-uppercase fw-bold text-white small mb-3" style="letter-spacing: 0.1em;">Staff & Access</h6>
+                    <ul class="list-unstyled small" style="line-height: 2.2;">
+                        <li><a href="{% url 'admin_login' %}" style="color: #9E968D;">Admin Portal</a></li>
+                        <li><a href="{% url 'all_books' %}" style="color: #9E968D;">Catalogue Manager</a></li>
+                        <li><a href="{% url 'add_book' %}" style="color: #9E968D;">Submit Volume</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-12">
+                    <div class="p-3 rounded-3" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);">
+                        <p class="font-serif fst-italic mb-2" style="font-size: 15px; color: #E5DFD7;">
+                            “A room without books is like a body without a soul.”
+                        </p>
+                        <small style="color: #8C847A;">— Marcus Tullius Cicero</small>
+                    </div>
+                </div>
+            </div>
+            <div class="pt-4 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 small" style="color: #8C847A;">
+                <span>© {% now "Y" %} BÓokly Editorial Archive. All rights reserved.</span>
+                <span>Crafted with intentional design and literary care.</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================= OFFCANVAS: MY BOOKSHELF ================= -->
+    <div class="offcanvas offcanvas-end bookshelf-drawer" tabindex="-1" id="bookshelfOffcanvas" aria-labelledby="bookshelfLabel">
+        <div class="offcanvas-header border-bottom">
+            <h5 class="offcanvas-title font-serif fw-bold" id="bookshelfLabel">
+                🔖 My Curated Bookshelf
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body" id="bookshelfItemsList">
+            <!-- Populated via JavaScript from localStorage -->
+        </div>
+    </div>
+
+    <!-- ================= QUICK VIEW MODAL ================= -->
+    <div class="modal fade" id="quickViewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden; background: #FAF7F2;">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 pt-1">
+                    <div id="quickViewLoading" class="text-center py-5">
+                        <div class="spinner-border text-danger" role="status">
+                            <span class="visually-hidden">Loading preview...</span>
+                        </div>
+                    </div>
+                    <div id="quickViewContent" class="row g-4 align-items-center" style="display:none;">
+                        <div class="col-md-5 text-center">
+                            <div class="book-cover-container mx-auto" style="max-width: 240px; height: 340px;">
+                                <div class="book-spine-effect"></div>
+                                <img id="qvCover" src="" alt="Book Cover">
+                            </div>
+                        </div>
+                        <div class="col-md-7">
+                            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                                <span class="badge-pill badge-category" id="qvCategory"></span>
+                                <span class="badge-pill badge-rating" id="qvRating"></span>
+                                <span class="badge-pill badge-pdf-available" id="qvPdfBadge" style="display:none;">Digital PDF</span>
+                            </div>
+                            <h3 class="font-serif fw-bold mb-1" id="qvTitle" style="font-size: 26px;"></h3>
+                            <p class="text-muted small mb-3" id="qvAuthor"></p>
+
+                            <div class="d-flex gap-3 small text-muted mb-3 pb-2 border-bottom">
+                                <span id="qvPages"></span>
+                                <span>•</span>
+                                <span id="qvLanguage"></span>
+                            </div>
+
+                            <p class="small text-secondary mb-4" id="qvDescription" style="line-height: 1.6; max-height: 120px; overflow-y: auto;"></p>
+
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a id="qvReadOnlineLink" href="#" class="btn btn-editorial-primary btn-sm px-3" style="display:none;">
+                                    📖 Read Online
+                                </a>
+                                <a id="qvDetailLink" href="#" class="btn btn-editorial-subtle btn-sm px-3">
+                                    Full Book Details →
+                                </a>
+                                <a id="qvPdfButton" href="#" class="btn btn-editorial-subtle btn-sm px-3" style="display:none;">
+                                    ⬇ Download PDF
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom App JS -->
+    <script src="{% static 'js/main.js' %}"></script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

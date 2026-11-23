@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}BÓokly — Discover Extraordinary Stories & Rare Editions{% endblock %}
+
+{% block content %}
+
+{% if is_search %}
+<!-- ================= SEARCH RESULTS VIEW ================= -->
+<section class="py-5">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+            <div>
+                <a href="{% url 'home' %}" class="btn btn-editorial-subtle btn-sm mb-2">← Back to Overview</a>
+                <h2 class="font-serif fw-bold mb-1">Search Results for "{{ search }}"</h2>
+                <p class="text-muted small mb-0">Found {{ books|length }} matching volume{{ books|length|pluralize }}
+                </p>
+            </div>
+            <a href="{% url 'user_all' %}" class="btn btn-editorial-subtle btn-sm">Explore All Books</a>
+        </div>
+
+        <div class="row g-4">
+            {% for book in books %}
+            <div class="col-lg-3 col-md-6 col-sm-12">
+                <div class="book-card-editorial">
+                    <div class="book-cover-container">
+                        <div class="book-spine-effect"></div>
+                        <button type="button" class="cover-action-favorite" data-id="{{ book.id }}"
+                            onclick="toggleSaveBook(this, {{ book.id }}, '{{ book.book_name|escapejs }}', '{{ book.author_name|escapejs }}', '{% if book.image %}{{ book.image.url }}{% endif %}', '{% url 'book_detail' book.id %}')"
+                            title="Save to bookshelf">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
+                                </path>
+                            </svg>
+                        </button>
+                        {% if book.image %}
+                        <img src="{{ book.image.url }}" alt="{{ book.book_name }}" loading="lazy">
+                        {% else %}
+                        <img src="{% static 'images/image2.jpeg' %}" alt="{{ book.book_name }}">
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <span class="badge-pill badge-category">{{ book.category }}</span>
+                        {% if book.pdf %}
+                        <span class="badge-pill badge-pdf-available">PDF Available</span>
+                        {% endif %}
+                    </div>
+
+                    <h5 class="book-title-editorial">
+                        <a href="{% url 'book_detail' book.id %}" class="text-dark">{{ book.book_name }}</a>
+                    </h5>
+                    <div class="book-author-editorial">by {{ book.author_name }}</div>
+                    <p class="book-desc-editorial">{{ book.description }}</p>
+
+                    <div class="card-bottom-actions">
+                        {% if book.pdf %}
+                        <a href="{% url 'book_detail' book.id %}?read=1" class="btn-card-read">📖 Read Volume</a>
+                        {% else %}
+                        <a href="{% url 'book_detail' book.id %}" class="btn-card-read">View Details</a>
+                        {% endif %}
+                        <button type="button" class="btn-card-quick" onclick="openQuickView({{ book.id }})">Quick
+                            View</button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 py-5 text-center">
+                <div class="mb-3" style="font-size: 3.5rem;">🔍</div>
+                <h3 class="font-serif fw-bold">No books found matching "{{ search }}"</h3>
+                <p class="text-muted">Try checking for spelling errors, searching by genre, or explore our full library.
+                </p>
+                <a href="{% url 'user_all' %}" class="btn btn-editorial-primary mt-2">Browse All Library Volumes</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+{% else %}
+
+<!-- ================= HERO SECTION ================= -->
+<section class="hero-editorial">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <span class="hero-kicker">CURATED LITERARY SANCTUARY</span>
+                <h1 class="hero-headline">
+                    Where stories <em>endure</em> and imagination finds its home.
+                </h1>
+                <p class="hero-lede">
+                    Immerse yourself in handpicked literary classics, gripping contemporary novels, and rare digital
+                    editions curated for inquisitive minds.
+                </p>
+
+                <div class="d-flex align-items-center gap-3 flex-wrap mb-4">
+                    <a href="{% url 'user_all' %}" class="btn btn-editorial-primary px-4 py-2" style="font-size: 15px;">
+                        Explore Entire Archive →
+                    </a>
+                    <a href="#trending" class="btn btn-editorial-subtle px-4 py-2" style="font-size: 15px;">
+                        Curated Highlights
+                    </a>
+                </div>
+
+                <!-- Real Statistics Counters -->
+                <div class="hero-stats-row">
+                    <div class="stat-item">
+                        <h4>{{ stats.total_books }}</h4>
+                        <span>Volumes</span>
+                    </div>
+                    <div class="stat-item">
+                        <h4>{{ stats.total_categories }}</h4>
+                        <span>Genres</span>
+                    </div>
+                    <div class="stat-item">
+                        <h4>{{ stats.total_digital }}</h4>
+                        <span>Digital PDFs</span>
+                    </div>
+                    <div class="stat-item">
+                        <h4>{{ stats.total_authors }}</h4>
+                        <span>Authors</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Book Showcase -->
+            <div class="col-lg-5 text-center">
+                <div class="hero-book-showcase">
+                    <div class="hero-book-card-main">
+                        <div class="book-spine-effect"></div>
+                        {% if featured_books.0 and featured_books.0.image %}
+                        <img src="{{ featured_books.0.image.url }}" alt="{{ featured_books.0.book_name }}">
+                        {% else %}
+                        <img src="{% static 'images/image2.jpeg' %}" alt="Featured Book">
+                        {% endif %}
+                    </div>
+
+                    {% if featured_books.0 %}
+                    <div class="hero-badge-floating">
+                        <div class="hero-badge-icon">★</div>
+                        <div class="text-start">
+                            <span class="d-block small text-muted text-uppercase fw-bold"
+                                style="font-size: 11px;">Editor's Selection</span>
+                            <strong class="font-serif" style="font-size: 14px;">{{ featured_books.0.book_name|truncatechars:24 }}</strong>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================= GENRE / CATEGORIES STRIP ================= -->
+<section class="py-4 border-top border-bottom" style="background-color: #F5EFE7;">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <span class="small text-uppercase fw-bold text-muted" style="letter-spacing: 0.08em;">Browse Genres:</span>
+            <a href="{% url 'user_all' %}" class="small text-decoration-none fw-semibold">View All →</a>
+        </div>
+        <div class="category-filter-bar">
+            <a href="{% url 'user_all' %}" class="category-pill">
+                <span>All Genres</span>
+                <span class="count">{{ stats.total_books }}</span>
+            </a>
+            {% for cat in categories %}
+            <a href="{% url 'user_all' %}?category={{ cat.category|urlencode }}" class="category-pill">
+                <span>{{ cat.category }}</span>
+                <span class="count">{{ cat.count }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ================= TRENDING CURATION ================= -->
+<section class="py-5" id="trending">
+    <div class="container">
+        <div class="d-flex align-items-end justify-content-between mb-4 pb-2 border-bottom flex-wrap gap-2">
+            <div>
+                <span class="hero-kicker mb-1">HANDPICKED THIS SEASON</span>
+                <h2 class="font-serif fw-bold mb-0">Trending in the Library</h2>
+            </div>
+            <a href="{% url 'user_all' %}" class="btn btn-editorial-subtle btn-sm">
+                View Full Library ({{ stats.total_books }}) →
+            </a>
+        </div>
+
+        <div class="row g-4">
+            {% for book in books %}
+            <div class="col-lg-3 col-md-6 col-sm-12">
+                <div class="book-card-editorial">
+                    <div class="book-cover-container">
+                        <div class="book-spine-effect"></div>
+                        <button type="button" class="cover-action-favorite" data-id="{{ book.id }}"
+                            onclick="toggleSaveBook(this, {{ book.id }}, '{{ book.book_name|escapejs }}', '{{ book.author_name|escapejs }}', '{% if book.image %}{{ book.image.url }}{% endif %}', '{% url 'book_detail' book.id %}')"
+                            title="Save to bookshelf">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
+                                </path>
+                            </svg>
+                        </button>
+                        {% if book.image %}
+                        <img src="{{ book.image.url }}" alt="{{ book.book_name }}" loading="lazy">
+                        {% else %}
+                        <img src="{% static 'images/image.png' %}" alt="{{ book.book_name }}">
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <span class="badge-pill badge-category">{{ book.category }}</span>
+                        {% if book.pdf %}
+                        <span class="badge-pill badge-pdf-available">PDF Included</span>
+                        {% endif %}
+                    </div>
+
+                    <h5 class="book-title-editorial">
+                        <a href="{% url 'book_detail' book.id %}" class="text-dark">{{ book.book_name }}</a>
+                    </h5>
+                    <div class="book-author-editorial">by {{ book.author_name }}</div>
+                    <p class="book-desc-editorial">{{ book.description }}</p>
+
+                    <div class="card-bottom-actions">
+                        {% if book.pdf %}
+                        <a href="{% url 'book_detail' book.id %}?read=1" class="btn-card-read">📖 Read Volume</a>
+                        {% else %}
+                        <a href="{% url 'book_detail' book.id %}" class="btn-card-read">View Details</a>
+                        {% endif %}
+                        <button type="button" class="btn-card-quick" onclick="openQuickView({{ book.id }})">Quick
+                            View</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ================= LITERARY PHILOSOPHY STRIP ================= -->
+<section class="py-5 my-4"
+    style="background: #FAF3EA; border-top: 1px solid #EFE4D6; border-bottom: 1px solid #EFE4D6;">
+    <div class="container text-center py-3">
+        <div style="max-width: 680px; margin: 0 auto;">
+            <span style="font-size: 32px; color: #C45536;">❝</span>
+            <blockquote class="font-serif fst-italic mb-3" style="font-size: 24px; color: #1E1B18; line-height: 1.4;">
+                A book is a version of the world. If you do not like it, ignore it; or offer your own version in return.
+            </blockquote>
+            <p class="text-muted small text-uppercase fw-bold" style="letter-spacing: 0.12em;">— Salman Rushdie</p>
+        </div>
+    </div>
+</section>
+
+<!-- ================= DIGITAL EDITIONS SPOTLIGHT ================= -->
+<section class="py-5">
+    <div class="container">
+        <div class="p-5 rounded-4"
+            style="background: linear-gradient(135deg, #1C1917 0%, #292524 100%); color: #FAF7F2;">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-8">
+                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold mb-3">DIGITAL READER
+                        READY</span>
+                    <h2 class="font-serif text-white fw-bold mb-3" style="font-size: 34px;">
+                        Read Complete Manuscripts Directly in Your Browser
+                    </h2>
+                    <p style="color: #A8A29E; font-size: 16px; line-height: 1.7; max-width: 600px;">
+                        Our built-in PDF viewer gives you instant access to full texts with zoom controls, offline PDF
+                        download, and zero distractions.
+                    </p>
+                    <a href="{% url 'user_all' %}?sort=pdf" class="btn btn-editorial-primary px-4 py-2 mt-2">
+                        Browse Digital PDF Titles →
+                    </a>
+                </div>
+                <div class="col-lg-4 text-center">
+                    <div class="p-4 rounded-3"
+                        style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);">
+                        <div style="font-size: 40px; margin-bottom: 10px;">📜</div>
+                        <h5 class="text-white font-serif mb-1">{{ stats.total_digital }} Digitized Volumes</h5>
+                        <p class="small text-muted mb-0">High-resolution scans and original PDF releases.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endif %}
+
+{% endblock %}

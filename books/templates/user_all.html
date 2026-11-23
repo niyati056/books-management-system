@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Explore Curated Library — BÓokly{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <!-- Page Title & Header -->
+        <div class="text-center mb-5" style="max-width: 640px; margin: 0 auto;">
+            <span class="hero-kicker">THE COMPLETE CATALOGUE</span>
+            <h1 class="font-serif fw-bold" style="font-size: clamp(34px, 4vw, 46px);">
+                Curated Volumes & Editions
+            </h1>
+            <p class="text-muted" style="font-size: 16px;">
+                Explore our literary holdings across fiction, philosophy, historical treatises, and digital manuscripts.
+            </p>
+        </div>
+
+        <!-- Filter & Search Controls Bar -->
+        <div class="p-3 mb-4 rounded-4"
+            style="background: #FFFFFF; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <form method="GET" action="{% url 'user_all' %}" id="filterForm">
+                <div class="row g-3 align-items-center">
+                    <!-- Search Input -->
+                    <div class="col-lg-6 col-md-5">
+                        <div class="position-relative">
+                            <span class="position-absolute"
+                                style="left: 14px; top: 50%; transform: translateY(-50%); color: #8A8077;">🔍</span>
+                            <input type="text" name="search" value="{{ search }}" class="form-control ps-5"
+                                style="border-radius: 20px; border-color: var(--border-color); font-size: 14.5px;"
+                                placeholder="Search by title, author name, or synopsis keyword...">
+                            {% if search %}
+                            <a href="{% url 'user_all' %}{% if selected_category %}?category={{ selected_category|urlencode }}{% endif %}"
+                                class="position-absolute text-muted"
+                                style="right: 14px; top: 50%; transform: translateY(-50%); text-decoration: none;">✕</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Category Hidden Input (preserved when sorting) -->
+                    {% if selected_category %}
+                    <input type="hidden" name="category" value="{{ selected_category }}">
+                    {% endif %}
+
+                    <!-- Sort Dropdown (Clean spaced Django template tags) -->
+                    <div class="col-lg-4 col-md-4 col-sm-8">
+                        <select name="sort" class="form-select"
+                            style="border-radius: 20px; border-color: var(--border-color); font-size: 14px;"
+                            onchange="document.getElementById('filterForm').submit()">
+                            <option value="newest" {% if selected_sort=='newest' %}selected{% endif %}>Sort by: Recently
+                                Added</option>
+                            <option value="title_asc" {% if selected_sort=='title_asc' %}selected{% endif %}>Title (A →
+                                Z)</option>
+                            <option value="title_desc" {% if selected_sort=='title_desc' %}selected{% endif %}>Title (Z
+                                → A)</option>
+                            <option value="author" {% if selected_sort=='author' %}selected{% endif %}>Author
+                                (Alphabetical)</option>
+                            <option value="rating" {% if selected_sort=='rating' %}selected{% endif %}>Highest Rated (★)
+                            </option>
+                            <option value="pdf" {% if selected_sort=='pdf' %}selected{% endif %}>Digital PDF Editions
+                                First</option>
+                        </select>
+                    </div>
+
+                    <!-- Submit / Reset -->
+                    <div class="col-lg-2 col-md-3 col-sm-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-editorial-primary w-100 justify-content-center">
+                            Filter
+                        </button>
+                        {% if search or selected_category %}
+                        <a href="{% url 'user_all' %}" class="btn btn-editorial-subtle" title="Reset all filters">
+                            ↺
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Category Pills Bar -->
+        <div class="mb-4">
+            <div class="category-filter-bar">
+                <a href="{% url 'user_all' %}{% if search %}?search={{ search|urlencode }}{% endif %}"
+                    class="category-pill {% if not selected_category %}active{% endif %}">
+                    <span>All Books</span>
+                </a>
+                {% for cat in categories %}
+                <a href="{% url 'user_all' %}?category={{ cat.category|urlencode }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if selected_sort %}&sort={{ selected_sort }}{% endif %}"
+                    class="category-pill {% if selected_category == cat.category %}active{% endif %}">
+                    <span>{{ cat.category }}</span>
+                    <span class="count">{{ cat.count }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Results Counter & Status -->
+        <div class="d-flex justify-content-between align-items-center mb-4 text-muted small flex-wrap gap-2">
+            <div>
+                Showing <strong class="text-dark">{{ total_results }}</strong> volume{{ total_results|pluralize }}
+                {% if selected_category %}in <em>{{ selected_category }}</em>{% endif %}
+                {% if search %}matching "<em>{{ search }}</em>"{% endif %}
+            </div>
+            {% if search or selected_category %}
+            <div>
+                <a href="{% url 'user_all' %}" class="text-danger text-decoration-none">Clear all filters</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Book Cards Grid -->
+        <div class="row g-4">
+            {% for book in books %}
+            <div class="col-lg-4 col-md-6 col-sm-12">
+                <div class="book-card-editorial">
+                    <!-- Book Cover Container -->
+                    <div class="book-cover-container" style="height: 320px;">
+                        <div class="book-spine-effect"></div>
+                        <button type="button" class="cover-action-favorite" data-id="{{ book.id }}"
+                            onclick="toggleSaveBook(this, {{ book.id }}, '{{ book.book_name|escapejs }}', '{{ book.author_name|escapejs }}', '{% if book.image %}{{ book.image.url }}{% endif %}', '{% url 'book_detail' book.id %}')"
+                            title="Save to bookshelf">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
+                                </path>
+                            </svg>
+                        </button>
+                        {% if book.image %}
+                        <img src="{{ book.image.url }}" alt="{{ book.book_name }}" loading="lazy">
+                        {% else %}
+                        <img src="{% static 'images/image.png' %}" alt="{{ book.book_name }}">
+                        {% endif %}
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <span class="badge-pill badge-category">{{ book.category }}</span>
+                        {% if book.pdf %}
+                        <span class="badge-pill badge-pdf-available">PDF Available</span>
+                        {% endif %}
+                        <span class="badge-pill badge-rating">★ {{ book.rating|default:"4.8" }}</span>
+                    </div>
+
+                    <!-- Title & Details -->
+                    <h5 class="book-title-editorial">
+                        <a href="{% url 'book_detail' book.id %}" class="text-dark text-decoration-none">{{
+                            book.book_name }}</a>
+                    </h5>
+                    <div class="book-author-editorial">by {{ book.author_name }}</div>
+                    <p class="book-desc-editorial">{{ book.description }}</p>
+
+                    <!-- Bottom Actions -->
+                    <div class="card-bottom-actions">
+                        {% if book.pdf %}
+                        <a href="{% url 'book_detail' book.id %}?read=1" class="btn-card-read">
+                            📖 Read Volume
+                        </a>
+                        {% else %}
+                        <a href="{% url 'book_detail' book.id %}" class="btn-card-read">
+                            View Details
+                        </a>
+                        {% endif %}
+                        <button type="button" class="btn-card-quick" onclick="openQuickView({{ book.id }})">
+                            Quick View
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <div class="p-5 rounded-4"
+                    style="background: #FFFFFF; border: 1px solid var(--border-color); max-width: 540px; margin: 0 auto;">
+                    <div style="font-size: 3.5rem; margin-bottom: 12px;">📚</div>
+                    <h3 class="font-serif fw-bold mb-2">No matching books found</h3>
+                    <p class="text-muted small mb-4">
+                        We couldn't find any books matching your criteria. Try adjusting your search query or selecting
+                        a different category.
+                    </p>
+                    <a href="{% url 'user_all' %}" class="btn btn-editorial-primary btn-sm px-4">
+                        Reset All Filters
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

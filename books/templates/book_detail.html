@@ -1,0 +1,444 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ book.book_name }} by {{ book.author_name }} — BÓokly{% endblock %}
+
+{% block content %}
+<div class="book-detail-wrapper">
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb small py-2 px-3 rounded-3"
+                style="background: rgba(255,255,255,0.7); border: 1px solid var(--border-color);">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-decoration-none">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'user_all' %}" class="text-decoration-none">Catalogue</a>
+                </li>
+                <li class="breadcrumb-item"><a href="{% url 'user_all' %}?category={{ book.category|urlencode }}"
+                        class="text-decoration-none">{{ book.category }}</a></li>
+                <li class="breadcrumb-item active text-truncate" style="max-width: 250px;" aria-current="page">{{ book.book_name }}</li>
+            </ol>
+        </nav>
+
+        <!-- Main Book Presentation -->
+        <div class="row g-4 g-lg-5 align-items-start mb-5">
+            <!-- Left: Book Cover Presentation -->
+            <div class="col-lg-4 col-md-5 text-center">
+                <div class="book-detail-cover mb-4">
+                    <div class="book-spine-effect"></div>
+                    {% if book.image %}
+                    <img src="{{ book.image.url }}" alt="{{ book.book_name }}" class="img-fluid rounded">
+                    {% else %}
+                    <img src="{% static 'images/image2.jpeg' %}" alt="{{ book.book_name }}" class="img-fluid rounded">
+                    {% endif %}
+                </div>
+
+                <!-- Action Button on Cover -->
+                <button type="button" class="btn btn-editorial-subtle w-100 justify-content-center mb-2"
+                    onclick="toggleSaveBook(this, {{ book.id }}, '{{ book.book_name|escapejs }}', '{{ book.author_name|escapejs }}', '{% if book.image %}{{ book.image.url }}{% endif %}', '{% url 'book_detail' book.id %}')">
+                    <span>🔖</span> Add to My Bookshelf
+                </button>
+
+                <button type="button" class="btn btn-sm btn-link text-muted w-100 text-decoration-none"
+                    onclick="copyShareLink()">
+                    🔗 Copy Share Link
+                </button>
+            </div>
+
+            <!-- Right: Book Editorial Details -->
+            <div class="col-lg-8 col-md-7">
+                <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                    <span class="badge-pill badge-category">{{ book.category }}</span>
+                    <span class="badge-pill badge-rating">★ {{ book.rating|default:"4.8" }} / 5.0</span>
+                    {% if book.pdf %}
+                    <span class="badge-pill badge-pdf-available">✓ Full Digital PDF Included</span>
+                    {% endif %}
+                </div>
+
+                <h1 class="detail-headline mb-2">{{ book.book_name }}</h1>
+                <div class="detail-author mb-4">by <strong class="text-dark">{{ book.author_name }}</strong></div>
+
+                <!-- Metadata Grid -->
+                <div class="detail-meta-grid mb-4">
+                    <div class="meta-box">
+                        <span class="label">Genre</span>
+                        <span class="value">{{ book.category }}</span>
+                    </div>
+                    <div class="meta-box">
+                        <span class="label">Book Length</span>
+                        <span class="value">{{ book.pages }} Pages</span>
+                    </div>
+                    <div class="meta-box">
+                        <span class="label">Digital PDF</span>
+                        <span class="value">
+                            {% if pdf_pages %}
+                            {{ pdf_pages }} PDF Pages
+                            {% else %}
+                            Digital Ready
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="meta-box">
+                        <span class="label">Est. Read Time</span>
+                        <span class="value">~{{ read_time_hours }} Hours</span>
+                    </div>
+                    <div class="meta-box">
+                        <span class="label">Language</span>
+                        <span class="value">{{ book.language|default:"English" }}</span>
+                    </div>
+                </div>
+
+                <!-- Primary Action Buttons -->
+                <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+                    {% if book.pdf %}
+                    <button type="button" class="btn btn-editorial-primary px-4 py-2" onclick="openPDFViewer('canvas')">
+                        📖 Read Online Now
+                    </button>
+                    <a href="{% url 'download_pdf' book.id %}" class="btn btn-editorial-subtle px-4 py-2">
+                        ⬇ Download PDF
+                    </a>
+                    <a href="{% url 'stream_pdf' book.id %}" target="_blank" class="btn btn-editorial-subtle px-3 py-2"
+                        title="Open PDF in dedicated browser tab">
+                        ↗ Fullscreen Reader
+                    </a>
+                    {% else %}
+                    <div class="p-3 rounded-3 w-100"
+                        style="background: var(--bg-muted); border: 1px dashed var(--border-color);">
+                        <span class="text-muted small">ℹ Digital manuscript is being prepared for this edition.
+                            Hardcover catalog entry active.</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Synopsis -->
+                <div class="mb-4">
+                    <h5 class="font-serif fw-bold mb-3 border-bottom pb-2">Synopsis & Overview</h5>
+                    <div class="detail-synopsis">
+                        {{ book.description|linebreaks }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= IN-BROWSER PDF READER SECTION ================= -->
+        {% if book.pdf %}
+        <div id="pdfViewerSection" class="pdf-reader-box mb-5" style="display: none;">
+            <div
+                class="pdf-toolbar d-flex justify-content-between align-items-center flex-wrap gap-2 pb-3 mb-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="font-size: 26px;">📖</span>
+                    <div>
+                        <h4 class="font-serif mb-0" style="font-size: 21px;">Reading: {{ book.book_name }}</h4>
+                        <span class="small text-muted">Complete Digital Manuscript • {% if pdf_pages %}{{ pdf_pages }}
+                            Pages{% else %}Full Edition{% endif %}</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Viewer Mode">
+                        <button type="button" id="btnModeCanvas" class="btn btn-outline-secondary active"
+                            onclick="switchReaderMode('canvas')">
+                            📖 Continuous Book
+                        </button>
+                        <button type="button" id="btnModeNative" class="btn btn-outline-secondary"
+                            onclick="switchReaderMode('native')">
+                            📄 Embedded View
+                        </button>
+                    </div>
+                    <a href="{% url 'stream_pdf' book.id %}" target="_blank" class="btn btn-sm btn-editorial-subtle"
+                        title="Open PDF in a new dedicated browser tab">
+                        ↗ Fullscreen Tab
+                    </a>
+                    <a href="{% url 'download_pdf' book.id %}" class="btn btn-sm btn-editorial-primary">
+                        ⬇ Download PDF
+                    </a>
+                    <button type="button" class="btn btn-sm btn-dark" onclick="closePDFViewer()">
+                        ✕ Close Reader
+                    </button>
+                </div>
+            </div>
+
+            <!-- Native Embedded Multi-Page PDF Viewer (Container 1) -->
+            <div id="nativePdfContainer" class="pdf-frame-wrapper"
+                style="background: #EFE9E0; border-radius: 12px; padding: 12px; border: 1px solid var(--border-color); display: none;">
+                <object data="{% url 'stream_pdf' book.id %}#view=FitH" type="application/pdf" width="100%"
+                    height="850px"
+                    style="border: none; border-radius: 8px; background: #ffffff; display: block; box-shadow: 0 4px 14px rgba(0,0,0,0.08);">
+                    <embed src="{% url 'stream_pdf' book.id %}#view=FitH" type="application/pdf" width="100%"
+                        height="850px" />
+                    <iframe id="pdfFrame" src="{% url 'stream_pdf' book.id %}#view=FitH" width="100%" height="850px"
+                        style="border: none; border-radius: 8px; background: #ffffff;"
+                        title="PDF Viewer for {{ book.book_name }}">
+                        <div class="p-5 text-center bg-white rounded-3 my-3">
+                            <h5 class="font-serif fw-bold mb-2">Native PDF Plugin Inactive</h5>
+                            <p class="text-muted small mb-3">Your browser does not embed inline frames. You can open the
+                                full manuscript in a dedicated tab or switch to continuous reading mode.</p>
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="{% url 'stream_pdf' book.id %}" target="_blank"
+                                    class="btn btn-editorial-primary btn-sm px-4">
+                                    Open Fullscreen Reader ↗
+                                </a>
+                                <button type="button" class="btn btn-editorial-subtle btn-sm"
+                                    onclick="switchReaderMode('canvas')">
+                                    Read in Continuous Mode
+                                </button>
+                            </div>
+                        </div>
+                    </iframe>
+                </object>
+            </div>
+
+            <!-- Continuous Canvas Reader (Container 2) -->
+            <div id="canvasPdfContainer" style="display: block;">
+                <div
+                    class="d-flex justify-content-between align-items-center mb-3 p-2 rounded-3 bg-light border flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small fw-bold">Zoom:</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2"
+                            onclick="zoomOut()">−</button>
+                        <span id="zoomLevel" class="small fw-semibold"
+                            style="min-width: 45px; text-align: center;">100%</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2"
+                            onclick="zoomIn()">+</button>
+                    </div>
+                    <div class="small text-muted">
+                        Total Pages: <strong id="canvasTotalPages">-</strong>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none"
+                            onclick="switchReaderMode('native')">
+                            Switch to Embedded Frame ↗
+                        </button>
+                    </div>
+                </div>
+
+                <div id="canvasLoading" class="text-center py-5">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">Rendering manuscript...</span>
+                    </div>
+                    <p class="mt-2 text-muted small">Rendering high-resolution pages...</p>
+                </div>
+
+                <div id="pdfCanvasPages" class="pdf-viewer-canvas-wrap" style="max-height: 850px; overflow-y: auto;">
+                    <!-- Rendered canvas pages go here -->
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3 small text-muted flex-wrap gap-2">
+                <span>Tip: You can read directly above or open the complete edition in a distraction-free tab.</span>
+                <a href="{% url 'stream_pdf' book.id %}" target="_blank" class="fw-semibold text-decoration-none">
+                    Open in separate fullscreen tab ↗
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ================= RELATED EDITIONS ================= -->
+        {% if related_books %}
+        <div class="mt-5 pt-4 border-top">
+            <div class="d-flex align-items-end justify-content-between mb-4 flex-wrap gap-2">
+                <div>
+                    <span class="hero-kicker mb-1">SIMILAR HOLDINGS</span>
+                    <h3 class="font-serif fw-bold mb-0">More in {{ book.category }}</h3>
+                </div>
+                <a href="{% url 'user_all' %}?category={{ book.category|urlencode }}"
+                    class="small fw-semibold text-decoration-none">
+                    Explore {{ book.category }} →
+                </a>
+            </div>
+
+            <div class="row g-4">
+                {% for rel in related_books %}
+                <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                    <div class="book-card-editorial">
+                        <div class="book-cover-container" style="height: 240px;">
+                            <div class="book-spine-effect"></div>
+                            {% if rel.image %}
+                            <img src="{{ rel.image.url }}" alt="{{ rel.book_name }}">
+                            {% else %}
+                            <img src="{% static 'images/image2.jpeg' %}" alt="{{ rel.book_name }}">
+                            {% endif %}
+                        </div>
+
+                        <div class="badge-pill badge-category mb-2">{{ rel.category }}</div>
+                        <h6 class="book-title-editorial">
+                            <a href="{% url 'book_detail' rel.id %}" class="text-dark text-decoration-none">{{ rel.book_name }}</a>
+                        </h6>
+                        <div class="book-author-editorial">by {{ rel.author_name }}</div>
+
+                        <div class="card-bottom-actions mt-auto">
+                            {% if rel.pdf %}
+                            <a href="{% url 'book_detail' rel.id %}?read=1" class="btn-card-read">📖 Read Volume</a>
+                            {% else %}
+                            <a href="{% url 'book_detail' rel.id %}" class="btn-card-read">View Book</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/pdf.min.js' %}"></script>
+<script>
+    let pdfDoc = null;
+    let currentScale = 1.3;
+    let canvasInitialized = false;
+
+    function openPDFViewer(preferredMode) {
+        const section = document.getElementById('pdfViewerSection');
+        if (section) {
+            section.style.display = 'block';
+            section.scrollIntoView({ behavior: 'smooth' });
+        }
+        if (preferredMode) {
+            switchReaderMode(preferredMode);
+        } else if (!canvasInitialized) {
+            initCanvasReader();
+        }
+    }
+
+    function closePDFViewer() {
+        const section = document.getElementById('pdfViewerSection');
+        if (section) {
+            section.style.display = 'none';
+        }
+    }
+
+    function switchReaderMode(mode) {
+        const nativeBox = document.getElementById('nativePdfContainer');
+        const canvasBox = document.getElementById('canvasPdfContainer');
+        const btnNative = document.getElementById('btnModeNative');
+        const btnCanvas = document.getElementById('btnModeCanvas');
+
+        if (mode === 'canvas') {
+            if (nativeBox) nativeBox.style.display = 'none';
+            if (canvasBox) canvasBox.style.display = 'block';
+            if (btnNative) btnNative.classList.remove('active');
+            if (btnCanvas) btnCanvas.classList.add('active');
+            if (!canvasInitialized) {
+                initCanvasReader();
+            }
+        } else {
+            if (nativeBox) nativeBox.style.display = 'block';
+            if (canvasBox) canvasBox.style.display = 'none';
+            if (btnNative) btnNative.classList.add('active');
+            if (btnCanvas) btnCanvas.classList.remove('active');
+        }
+    }
+
+    function initCanvasReader() {
+        canvasInitialized = true;
+        const loadingEl = document.getElementById('canvasLoading');
+        const container = document.getElementById('pdfCanvasPages');
+        if (!container) return;
+
+        if (typeof pdfjsLib === 'undefined') {
+            if (loadingEl) {
+                loadingEl.innerHTML = '<div class="alert alert-info py-3">Continuous canvas renderer is initializing. You can read smoothly in the Embedded View above.</div>';
+            }
+            return;
+        }
+
+        try {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = "{% static 'js/pdf.worker.min.js' %}";
+        } catch (e) {
+            console.warn('Worker configuration exception, continuing with fallback', e);
+        }
+
+        const pdfUrl = "{% url 'stream_pdf' book.id %}";
+
+        pdfjsLib.getDocument(pdfUrl).promise.then(function(doc) {
+            pdfDoc = doc;
+            if (loadingEl) loadingEl.style.display = 'none';
+            const totalEl = document.getElementById('canvasTotalPages');
+            if (totalEl) totalEl.textContent = doc.numPages;
+            renderAllPages();
+        }).catch(function(err) {
+            console.error('PDF.js loading error:', err);
+            if (loadingEl) {
+                loadingEl.innerHTML = `
+                    <div class="p-4 text-center bg-white rounded-3 border">
+                        <p class="mb-2 text-muted">Continuous rendering was paused. You can read smoothly in the embedded viewer or new tab:</p>
+                        <a href="{% url 'stream_pdf' book.id %}" target="_blank" class="btn btn-editorial-primary btn-sm">
+                            Open Fullscreen Reader ↗
+                        </a>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    function renderAllPages() {
+        if (!pdfDoc) return;
+        const container = document.getElementById('pdfCanvasPages');
+        if (!container) return;
+        container.innerHTML = '';
+
+        for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+            const pageCard = document.createElement('div');
+            pageCard.className = 'pdf-page-card mb-4 text-center p-3 rounded-3 shadow-sm bg-white';
+            pageCard.style.cssText = 'max-width: 860px; width: 100%; margin: 0 auto; border: 1px solid var(--border-color);';
+
+            const header = document.createElement('div');
+            header.className = 'd-flex justify-content-between align-items-center mb-2 px-1 text-muted small font-serif';
+            header.innerHTML = `<span>Page ${pageNum} of ${pdfDoc.numPages}</span><span class="badge bg-light text-dark border">Digital Edition</span>`;
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'pdf-page-canvas img-fluid d-block mx-auto rounded';
+
+            pageCard.appendChild(header);
+            pageCard.appendChild(canvas);
+            container.appendChild(pageCard);
+
+            (function(pNum, cvs) {
+                pdfDoc.getPage(pNum).then(function(page) {
+                    const viewport = page.getViewport({ scale: currentScale });
+                    cvs.height = viewport.height;
+                    cvs.width = viewport.width;
+
+                    const renderContext = {
+                        canvasContext: cvs.getContext('2d'),
+                        viewport: viewport
+                    };
+                    page.render(renderContext);
+                });
+            })(pageNum, canvas);
+        }
+    }
+
+    function zoomIn() {
+        currentScale = Math.min(2.5, currentScale + 0.2);
+        const zEl = document.getElementById('zoomLevel');
+        if (zEl) zEl.textContent = `${Math.round(currentScale * 100 / 1.3)}%`;
+        renderAllPages();
+    }
+
+    function zoomOut() {
+        currentScale = Math.max(0.7, currentScale - 0.2);
+        const zEl = document.getElementById('zoomLevel');
+        if (zEl) zEl.textContent = `${Math.round(currentScale * 100 / 1.3)}%`;
+        renderAllPages();
+    }
+
+    function copyShareLink() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            showToast('Link copied to clipboard!', 'success');
+        }).catch(() => {
+            showToast('Failed to copy link', 'error');
+        });
+    }
+
+    // Auto open reader when ?read=1 or hash #read is in URL
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('read') === '1' || urlParams.get('read') === 'true' || window.location.hash === '#pdfViewerSection') {
+            openPDFViewer('canvas');
+        }
+    });
+</script>
+{% endblock %}
